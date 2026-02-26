@@ -143,17 +143,8 @@ def generate_pdf_report(data):
                  f"患者名: {data['name']}　|　患者ID: {data['patient_id']}　|　実施日: {timestamp}",
                  ha='center', fontsize=11)
 
-        if data['total_avg'] >= 75:
-            qol_level = "良好（軽度の影響）"
-        elif data['total_avg'] >= 50:
-            qol_level = "中程度（中程度の影響）"
-        elif data['total_avg'] >= 25:
-            qol_level = "低下（顕著な影響）"
-        else:
-            qol_level = "著しい低下（重度の影響）"
-
         fig.text(0.5, 0.90,
-                 f"全体平均: {data['total_avg']:.1f}点　|　心理社会面: {data['psychosocial_avg']:.1f}点　|　機能面: {data['functional_avg']:.1f}点　|　評価: {qol_level}",
+                 f"全体平均: {data['total_avg']:.1f}点　|　心理社会面: {data['psychosocial_avg']:.1f}点　|　機能面: {data['functional_avg']:.1f}点",
                  ha='center', fontsize=10, color='#333333')
 
         gs = fig.add_gridspec(2, 2, left=0.07, right=0.98, top=0.87, bottom=0.05,
@@ -284,18 +275,6 @@ if st.button("✅ 回答を送信してスコアを表示", type="primary", use_
         st.success("✅ 回答を送信しました！")
         st.divider()
         st.header("📊 結果")
-
-        if data['total_avg'] >= 75:
-            qol_level, level_color = "良好（軽度の影響）", "🟢"
-        elif data['total_avg'] >= 50:
-            qol_level, level_color = "中程度（中程度の影響）", "🟡"
-        elif data['total_avg'] >= 25:
-            qol_level, level_color = "低下（顕著な影響）", "🟠"
-        else:
-            qol_level, level_color = "著しい低下（重度の影響）", "🔴"
-
-        st.subheader(f"総合評価 {level_color}")
-        st.markdown(f"**QOL レベル:** {qol_level}")
 
         col1, col2, col3 = st.columns(3)
         with col1:
