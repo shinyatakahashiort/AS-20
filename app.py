@@ -93,7 +93,6 @@ def create_visualization(data):
     ax1.set_xlim(0, 110)
     ax1.invert_yaxis()
     ax1.grid(axis='x', alpha=0.3, linestyle='--')
-    ax1.axvline(x=75, color='green', linestyle=':', linewidth=2, alpha=0.6, label='良好ライン(75点)')
     ax1.axvline(x=50, color='orange', linestyle=':', linewidth=2, alpha=0.6, label='中程度ライン(50点)')
     ax1.axvline(x=25, color='red', linestyle=':', linewidth=2, alpha=0.6, label='低下ライン(25点)')
     ax1.legend(loc='lower right', fontsize=9)
@@ -108,7 +107,6 @@ def create_visualization(data):
     ax2.set_title('カテゴリー別平均点', fontsize=15, fontweight='bold', pad=12)
     ax2.set_ylim(0, 110)
     ax2.grid(axis='y', alpha=0.3, linestyle='--')
-    ax2.axhline(y=75, color='green', linestyle=':', linewidth=2, alpha=0.5)
     ax2.axhline(y=50, color='orange', linestyle=':', linewidth=2, alpha=0.5)
     ax2.axhline(y=25, color='red', linestyle=':', linewidth=2, alpha=0.5)
     for bar, score in zip(bars2, avg_scores):
@@ -121,7 +119,6 @@ def create_visualization(data):
     ax3.set_title('心理社会面 vs 機能面', fontsize=15, fontweight='bold', pad=12)
     ax3.set_ylim(0, 110)
     ax3.grid(axis='y', alpha=0.3, linestyle='--')
-    ax3.axhline(y=75, color='green', linestyle=':', linewidth=2, alpha=0.5, label='良好(75点)')
     ax3.axhline(y=50, color='orange', linestyle=':', linewidth=2, alpha=0.5, label='中程度(50点)')
     ax3.axhline(y=25, color='red', linestyle=':', linewidth=2, alpha=0.5, label='低下(25点)')
     ax3.legend(loc='upper right', fontsize=8)
@@ -202,17 +199,6 @@ if st.button("✅ 回答を送信してスコアを表示", type="primary", use_
         fig = create_visualization(data)
         st.pyplot(fig)
 
-        with st.expander("📖 結果の解釈ガイド"):
-            st.markdown("""
-            ### 平均点の意味
-            - **高得点（75-100点）**: 視覚の問題が日常生活に与える影響が少なく、QOLは良好です
-            - **中程度（50-74点）**: 中程度の影響があり、生活の質にある程度の制約が見られます
-            - **低得点（25-49点）**: 顕著な影響があり、日常生活に大きな制約があります
-            - **著しい低下（0-24点）**: 重度の影響があり、QOLが著しく低下しています
-
-            **注意:** このスコアは自己評価に基づくものであり、医療専門家による診断の代わりにはなりません。
-            結果については主治医にご相談ください。
-            """)
 
 st.divider()
 st.caption("© 2025 視覚のQOL調査 AS-20 | すべての回答は自動的に保存されます")
