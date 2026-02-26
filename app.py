@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib_fontja
+from matplotlib.backends.backend_pdf import PdfPages
+import io
 import json
 import os
 from datetime import datetime
@@ -93,9 +95,6 @@ def create_visualization(data):
     ax1.set_xlim(0, 110)
     ax1.invert_yaxis()
     ax1.grid(axis='x', alpha=0.3, linestyle='--')
-    ax1.axvline(x=50, color='orange', linestyle=':', linewidth=2, alpha=0.6, label='中程度ライン(50点)')
-    ax1.axvline(x=25, color='red', linestyle=':', linewidth=2, alpha=0.6, label='低下ライン(25点)')
-    ax1.legend(loc='lower right', fontsize=9)
     for bar, score in zip(bars, data['scores']):
         ax1.text(bar.get_width() + 2, bar.get_y() + bar.get_height()/2, f'{int(score)}', ha='left', va='center', fontsize=10, fontweight='bold')
 
@@ -107,8 +106,6 @@ def create_visualization(data):
     ax2.set_title('カテゴリー別平均点', fontsize=15, fontweight='bold', pad=12)
     ax2.set_ylim(0, 110)
     ax2.grid(axis='y', alpha=0.3, linestyle='--')
-    ax2.axhline(y=50, color='orange', linestyle=':', linewidth=2, alpha=0.5)
-    ax2.axhline(y=25, color='red', linestyle=':', linewidth=2, alpha=0.5)
     for bar, score in zip(bars2, avg_scores):
         ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 3, f'{score:.1f}点', ha='center', va='bottom', fontsize=13, fontweight='bold')
         ax2.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=11, fontweight='bold', color='white')
@@ -119,9 +116,6 @@ def create_visualization(data):
     ax3.set_title('心理社会面 vs 機能面', fontsize=15, fontweight='bold', pad=12)
     ax3.set_ylim(0, 110)
     ax3.grid(axis='y', alpha=0.3, linestyle='--')
-    ax3.axhline(y=50, color='orange', linestyle=':', linewidth=2, alpha=0.5, label='中程度(50点)')
-    ax3.axhline(y=25, color='red', linestyle=':', linewidth=2, alpha=0.5, label='低下(25点)')
-    ax3.legend(loc='upper right', fontsize=8)
     for bar, score in zip(bars3, [data['psychosocial_avg'], data['functional_avg']]):
         ax3.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 3, f'{score:.1f}点', ha='center', va='bottom', fontsize=13, fontweight='bold')
         ax3.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=11, fontweight='bold', color='white')
@@ -134,6 +128,121 @@ def create_visualization(data):
 
     plt.tight_layout()
     return fig
+
+
+def generate_pdf_report(data):
+    buf = io.BytesIO()
+    with PdfPages(buf) as pdf:
+        # --- ページ1: サマリー + グラフ (横A4) ---
+        fig = plt.figure(figsize=(11.69, 8.27))
+
+        fig.suptitle('視覚のQOL調査 AS-20 結果レポート', fontsize=18, fontweight='bold', y=0.98)
+
+        timestamp = data['timestamp'][:10]
+        fig.text(0.5, 0.94,
+                 f"患者名: {data['name']}　|　患者ID: {data['patient_id']}　|　実施日: {timestamp}",
+                 ha='center', fontsize=11)
+
+        if data['total_avg'] >= 75:
+            qol_level = "良好（軽度の影響）"
+        elif data['total_avg'] >= 50:
+            qol_level = "中程度（中程度の影響）"
+        elif data['total_avg'] >= 25:
+            qol_level = "低下（顕著な影響）"
+        else:
+            qol_level = "著しい低下（重度の影響）"
+
+        fig.text(0.5, 0.90,
+                 f"全体平均: {data['total_avg']:.1f}点　|　心理社会面: {data['psychosocial_avg']:.1f}点　|　機能面: {data['functional_avg']:.1f}点　|　評価: {qol_level}",
+                 ha='center', fontsize=10, color='#333333')
+
+        gs = fig.add_gridspec(2, 2, left=0.07, right=0.98, top=0.87, bottom=0.05,
+                              width_ratios=[2, 1], height_ratios=[1, 1], hspace=0.35, wspace=0.3)
+
+        ax1 = fig.add_subplot(gs[:, 0])
+        questions_short = [f"Q{i+1}" for i in range(20)]
+        colors = ['#2ECC71' if s == 100 else '#95E1D3' if s == 75 else '#FFD93D' if s == 50 else '#FF9A76' if s == 25 else '#FF6B6B' for s in data['scores']]
+        bars = ax1.barh(questions_short, data['scores'], color=colors, edgecolor='black', linewidth=0.6)
+        ax1.set_xlabel('スコア（100点満点）', fontsize=10, fontweight='bold')
+        ax1.set_ylabel('質問項目', fontsize=10, fontweight='bold')
+        ax1.set_title('項目ごとのスコア', fontsize=12, fontweight='bold', pad=8)
+        ax1.set_xlim(0, 115)
+        ax1.invert_yaxis()
+        ax1.grid(axis='x', alpha=0.3, linestyle='--')
+        for bar, score in zip(bars, data['scores']):
+            ax1.text(bar.get_width() + 2, bar.get_y() + bar.get_height()/2, f'{int(score)}', ha='left', va='center', fontsize=8, fontweight='bold')
+
+        ax2 = fig.add_subplot(gs[0, 1])
+        categories = ['全体\n(Q1-20)', '心理社会面\n(Q1-10)', '機能面\n(Q11-20)']
+        avg_scores = [data['total_avg'], data['psychosocial_avg'], data['functional_avg']]
+        bars2 = ax2.bar(categories, avg_scores, color=['#9B59B6', '#E74C3C', '#3498DB'], edgecolor='black', linewidth=1.2, alpha=0.85, width=0.6)
+        ax2.set_ylabel('平均点', fontsize=10, fontweight='bold')
+        ax2.set_title('カテゴリー別平均点', fontsize=12, fontweight='bold', pad=8)
+        ax2.set_ylim(0, 115)
+        ax2.grid(axis='y', alpha=0.3, linestyle='--')
+        for bar, score in zip(bars2, avg_scores):
+            ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 2, f'{score:.1f}点', ha='center', va='bottom', fontsize=10, fontweight='bold')
+            if score > 15:
+                ax2.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=9, fontweight='bold', color='white')
+
+        ax3 = fig.add_subplot(gs[1, 1])
+        bars3 = ax3.bar(['心理社会面\n(Q1-10)', '機能面\n(Q11-20)'], [data['psychosocial_avg'], data['functional_avg']], color=['#E74C3C', '#3498DB'], edgecolor='black', linewidth=1.2, alpha=0.85, width=0.5)
+        ax3.set_ylabel('平均点', fontsize=10, fontweight='bold')
+        ax3.set_title('心理社会面 vs 機能面', fontsize=12, fontweight='bold', pad=8)
+        ax3.set_ylim(0, 115)
+        ax3.grid(axis='y', alpha=0.3, linestyle='--')
+        for bar, score in zip(bars3, [data['psychosocial_avg'], data['functional_avg']]):
+            ax3.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 2, f'{score:.1f}点', ha='center', va='bottom', fontsize=10, fontweight='bold')
+            if score > 15:
+                ax3.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=9, fontweight='bold', color='white')
+
+        diff = abs(data['psychosocial_avg'] - data['functional_avg'])
+        if diff > 10:
+            diff_text = f'心理社会面が{diff:.1f}点高い' if data['psychosocial_avg'] > data['functional_avg'] else f'機能面が{diff:.1f}点高い'
+            color = '#E74C3C' if data['psychosocial_avg'] > data['functional_avg'] else '#3498DB'
+            ax3.text(0.5, 0.95, diff_text, transform=ax3.transAxes, ha='center', va='top', fontsize=9, fontweight='bold', bbox=dict(boxstyle='round,pad=0.4', facecolor=color, alpha=0.3))
+
+        fig.text(0.5, 0.01, '本調査の権利は後関利明教授および視能訓練士・高橋慎也が保有しています。',
+                 ha='center', fontsize=7, color='gray')
+
+        pdf.savefig(fig, bbox_inches='tight')
+        plt.close(fig)
+
+        # --- ページ2: 全回答一覧 (縦A4) ---
+        fig2, ax = plt.subplots(figsize=(8.27, 11.69))
+        ax.axis('off')
+
+        fig2.suptitle('AS-20 回答詳細', fontsize=14, fontweight='bold', y=0.97)
+        fig2.text(0.5, 0.94, f"患者名: {data['name']}　患者ID: {data['patient_id']}　実施日: {timestamp}",
+                  ha='center', fontsize=10)
+
+        table_data = [[f"Q{i+1}", QUESTIONS[i][3:], data['responses'][i], f"{data['scores'][i]}点"]
+                      for i in range(20)]
+        table = ax.table(
+            cellText=table_data,
+            colLabels=['No', '質問', '回答', 'スコア'],
+            cellLoc='left',
+            loc='center',
+            bbox=[0, 0, 1, 0.92]
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(8)
+        for (row, col), cell in table.get_celld().items():
+            if row == 0:
+                cell.set_facecolor('#4A4A8A')
+                cell.set_text_props(color='white', fontweight='bold')
+            elif row % 2 == 0:
+                cell.set_facecolor('#F0F0F8')
+            cell.set_edgecolor('#CCCCCC')
+
+        fig2.text(0.5, 0.01, '本調査の権利は後関利明教授および視能訓練士・高橋慎也が保有しています。',
+                  ha='center', fontsize=7, color='gray')
+
+        pdf.savefig(fig2, bbox_inches='tight')
+        plt.close(fig2)
+
+    buf.seek(0)
+    return buf
 
 
 # メイン
@@ -199,6 +308,16 @@ if st.button("✅ 回答を送信してスコアを表示", type="primary", use_
         fig = create_visualization(data)
         st.pyplot(fig)
 
+        st.divider()
+        pdf_buf = generate_pdf_report(data)
+        filename = f"AS20_{data['patient_id']}_{data['timestamp'][:10]}.pdf"
+        st.download_button(
+            label="🖨️ PDFレポートをダウンロード",
+            data=pdf_buf,
+            file_name=filename,
+            mime="application/pdf",
+            use_container_width=True
+        )
 
 st.divider()
 st.caption("© 2025 視覚のQOL調査 AS-20 | すべての回答は自動的に保存されます")
