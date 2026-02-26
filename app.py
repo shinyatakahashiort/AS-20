@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import japanize_matplotlib
 import json
 import os
 from datetime import datetime
@@ -79,14 +80,6 @@ def save_response(name, patient_id, responses):
 
 
 def create_visualization(data):
-    # 日本語フォント設定
-    import matplotlib
-    import platform
-    if platform.system() == 'Darwin':
-        matplotlib.rcParams['font.family'] = 'Hiragino Sans'
-    else:
-        matplotlib.rcParams['font.family'] = 'IPAexGothic'
-
     fig = plt.figure(figsize=(18, 10))
     gs = fig.add_gridspec(2, 2, width_ratios=[2, 1], height_ratios=[1, 1], hspace=0.3, wspace=0.3)
 
@@ -223,3 +216,4 @@ if st.button("✅ 回答を送信してスコアを表示", type="primary", use_
 
 st.divider()
 st.caption("© 2025 視覚のQOL調査 AS-20 | すべての回答は自動的に保存されます")
+st.caption("本調査の権利は後関利明教授および視能訓練士・高橋慎也が保有しています。無断転載・複製を禁じます。")
