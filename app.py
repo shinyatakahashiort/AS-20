@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib_fontja
 from matplotlib.backends.backend_pdf import PdfPages
 import io
-import json
-import os
 import textwrap
 from datetime import datetime
 
@@ -15,10 +13,6 @@ st.set_page_config(
     page_icon="👁️",
     layout="wide"
 )
-
-# データ保存用ディレクトリ
-DATA_DIR = "survey_data"
-os.makedirs(DATA_DIR, exist_ok=True)
 
 # AS-20アンケート質問項目
 QUESTIONS = [
@@ -58,14 +52,13 @@ PSYCHOSOCIAL_ITEMS = list(range(0, 10))
 FUNCTIONAL_ITEMS = list(range(10, 20))
 
 
-def save_response(name, patient_id, responses):
+def calculate_scores(patient_id, responses):
     scores = [SCORE_MAP[r] for r in responses]
     total_avg = sum(scores) / 20
     psychosocial_avg = sum(scores[i] for i in PSYCHOSOCIAL_ITEMS) / 10
     functional_avg = sum(scores[i] for i in FUNCTIONAL_ITEMS) / 10
 
     data = {
-        "name": name,
         "patient_id": patient_id,
         "timestamp": datetime.now().isoformat(),
         "responses": responses,
@@ -74,10 +67,6 @@ def save_response(name, patient_id, responses):
         "psychosocial_avg": psychosocial_avg,
         "functional_avg": functional_avg
     }
-
-    filename = f"{DATA_DIR}/{patient_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
 
     return data
 
@@ -109,7 +98,6 @@ def create_visualization(data):
     ax2.grid(axis='y', alpha=0.3, linestyle='--')
     for bar, score in zip(bars2, avg_scores):
         ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 3, f'{score:.1f}点', ha='center', va='bottom', fontsize=13, fontweight='bold')
-        ax2.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=11, fontweight='bold', color='white')
 
     ax3 = fig.add_subplot(gs[1, 1])
     bars3 = ax3.bar(['心理社会面\n(Q1-10)', '機能面\n(Q11-20)'], [data['psychosocial_avg'], data['functional_avg']], color=['#E74C3C', '#3498DB'], edgecolor='black', linewidth=1.5, alpha=0.85, width=0.5)
@@ -119,7 +107,6 @@ def create_visualization(data):
     ax3.grid(axis='y', alpha=0.3, linestyle='--')
     for bar, score in zip(bars3, [data['psychosocial_avg'], data['functional_avg']]):
         ax3.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 3, f'{score:.1f}点', ha='center', va='bottom', fontsize=13, fontweight='bold')
-        ax3.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=11, fontweight='bold', color='white')
 
     diff = abs(data['psychosocial_avg'] - data['functional_avg'])
     if diff > 10:
@@ -137,18 +124,18 @@ def generate_pdf_report(data):
         # --- ページ1: サマリー + グラフ (横A4) ---
         fig = plt.figure(figsize=(11.69, 8.27))
 
-        fig.suptitle('視覚のQOL調査 AS-20 結果レポート', fontsize=18, fontweight='bold', y=0.98)
+        fig.suptitle('視覚のQOL調査 AS-20 結果レポート', fontsize=18, fontweight='bold', y=0.98, va='top')
 
         timestamp = data['timestamp'][:10]
-        fig.text(0.5, 0.94,
-                 f"患者名: {data['name']}　|　患者ID: {data['patient_id']}　|　実施日: {timestamp}",
-                 ha='center', fontsize=11)
+        fig.text(0.5, 0.93,
+                 f"患者ID: {data['patient_id']}　|　実施日: {timestamp}",
+                 ha='center', va='top', fontsize=11)
 
-        fig.text(0.5, 0.90,
+        fig.text(0.5, 0.895,
                  f"全体平均: {data['total_avg']:.1f}点　|　心理社会面: {data['psychosocial_avg']:.1f}点　|　機能面: {data['functional_avg']:.1f}点",
-                 ha='center', fontsize=10, color='#333333')
+                 ha='center', va='top', fontsize=10, color='#333333')
 
-        gs = fig.add_gridspec(2, 2, left=0.07, right=0.98, top=0.87, bottom=0.05,
+        gs = fig.add_gridspec(2, 2, left=0.07, right=0.98, top=0.82, bottom=0.10,
                               width_ratios=[2, 1], height_ratios=[1, 1], hspace=0.35, wspace=0.3)
 
         ax1 = fig.add_subplot(gs[:, 0])
@@ -174,8 +161,6 @@ def generate_pdf_report(data):
         ax2.grid(axis='y', alpha=0.3, linestyle='--')
         for bar, score in zip(bars2, avg_scores):
             ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 2, f'{score:.1f}点', ha='center', va='bottom', fontsize=10, fontweight='bold')
-            if score > 15:
-                ax2.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=9, fontweight='bold', color='white')
 
         ax3 = fig.add_subplot(gs[1, 1])
         bars3 = ax3.bar(['心理社会面\n(Q1-10)', '機能面\n(Q11-20)'], [data['psychosocial_avg'], data['functional_avg']], color=['#E74C3C', '#3498DB'], edgecolor='black', linewidth=1.2, alpha=0.85, width=0.5)
@@ -185,8 +170,6 @@ def generate_pdf_report(data):
         ax3.grid(axis='y', alpha=0.3, linestyle='--')
         for bar, score in zip(bars3, [data['psychosocial_avg'], data['functional_avg']]):
             ax3.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 2, f'{score:.1f}点', ha='center', va='bottom', fontsize=10, fontweight='bold')
-            if score > 15:
-                ax3.text(bar.get_x() + bar.get_width()/2., score/2, f'{score:.1f}%', ha='center', va='center', fontsize=9, fontweight='bold', color='white')
 
         diff = abs(data['psychosocial_avg'] - data['functional_avg'])
         if diff > 10:
@@ -204,12 +187,12 @@ def generate_pdf_report(data):
         fig2, ax = plt.subplots(figsize=(11.69, 8.27))
         ax.axis('off')
 
-        fig2.suptitle('AS-20 回答詳細', fontsize=14, fontweight='bold', y=0.97)
-        fig2.text(0.5, 0.94, f"患者名: {data['name']}　患者ID: {data['patient_id']}　実施日: {timestamp}",
-                  ha='center', fontsize=10)
+        fig2.suptitle('AS-20 回答詳細', fontsize=14, fontweight='bold', y=0.97, va='top')
+        fig2.text(0.5, 0.925, f"患者ID: {data['patient_id']}　実施日: {timestamp}",
+                  ha='center', va='top', fontsize=10)
 
         table_data = [[f"Q{i+1}",
-                       textwrap.fill(QUESTIONS[i][3:], width=32),
+                       textwrap.fill(QUESTIONS[i].split('. ', 1)[1], width=32),
                        textwrap.fill(data['responses'][i], width=18),
                        f"{data['scores'][i]}点"]
                       for i in range(20)]
@@ -241,6 +224,12 @@ def generate_pdf_report(data):
     return buf
 
 
+def clear_result():
+    # 入力を変えたら古い結果を消す
+    st.session_state.pop("result", None)
+    st.session_state.pop("pdf", None)
+
+
 # メイン
 st.title("📋 視覚のQOL調査 AS-20")
 st.markdown("""
@@ -254,9 +243,7 @@ st.divider()
 
 col1, col2 = st.columns(2)
 with col1:
-    name = st.text_input("氏名 *", placeholder="お名前を入力してください")
-with col2:
-    patient_id = st.text_input("患者ID *", placeholder="患者IDを入力してください")
+    patient_id = st.text_input("患者ID *", placeholder="患者IDを入力してください", on_change=clear_result)
 
 st.divider()
 
@@ -265,44 +252,49 @@ st.caption("*すべての質問にお答えください*")
 
 responses = []
 for i, question in enumerate(QUESTIONS):
-    response = st.radio(question, options=LIKERT_OPTIONS, index=None, key=f"q{i}", horizontal=True)
+    response = st.radio(question, options=LIKERT_OPTIONS, index=None, key=f"q{i}", horizontal=True, on_change=clear_result)
     responses.append(response)
 
 st.divider()
 
 if st.button("✅ 回答を送信してスコアを表示", type="primary", use_container_width=True):
-    if not name or not patient_id:
-        st.error("❌ 氏名とIDを入力してください。")
+    if not patient_id:
+        st.error("❌ 患者IDを入力してください。")
     elif None in responses:
         st.error("❌ すべての質問に回答してください。")
     else:
-        data = save_response(name, patient_id, responses)
-        st.success("✅ 回答を送信しました！")
-        st.divider()
-        st.header("📊 結果")
+        # PDFダウンロード時の再実行でも結果が消えないよう session_state に保持
+        st.session_state["result"] = calculate_scores(patient_id, responses)
+        st.session_state["pdf"] = generate_pdf_report(st.session_state["result"]).getvalue()
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("全体平均点", f"{data['total_avg']:.1f}点")
-        with col2:
-            st.metric("心理社会面平均点", f"{data['psychosocial_avg']:.1f}点")
-        with col3:
-            st.metric("機能面平均点", f"{data['functional_avg']:.1f}点")
+if "result" in st.session_state:
+    data = st.session_state["result"]
+    st.success("✅ 回答を送信しました！")
+    st.divider()
+    st.header("📊 結果")
 
-        fig = create_visualization(data)
-        st.pyplot(fig)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("全体平均点", f"{data['total_avg']:.1f}点")
+    with col2:
+        st.metric("心理社会面平均点", f"{data['psychosocial_avg']:.1f}点")
+    with col3:
+        st.metric("機能面平均点", f"{data['functional_avg']:.1f}点")
 
-        st.divider()
-        pdf_buf = generate_pdf_report(data)
-        filename = f"AS20_{data['patient_id']}_{data['timestamp'][:10]}.pdf"
-        st.download_button(
-            label="🖨️ PDFレポートをダウンロード",
-            data=pdf_buf,
-            file_name=filename,
-            mime="application/pdf",
-            use_container_width=True
-        )
+    fig = create_visualization(data)
+    st.pyplot(fig)
+    plt.close(fig)
+
+    st.divider()
+    filename = f"AS20_{data['patient_id']}_{data['timestamp'][:10]}.pdf"
+    st.download_button(
+        label="🖨️ PDFレポートをダウンロード",
+        data=st.session_state["pdf"],
+        file_name=filename,
+        mime="application/pdf",
+        use_container_width=True
+    )
 
 st.divider()
-st.caption("© 2025 視覚のQOL調査 AS-20 | すべての回答は自動的に保存されます")
+st.caption(f"© {datetime.now().year} 視覚のQOL調査 AS-20 | 回答は保存されません。結果はPDFでダウンロードしてください")
 st.caption("本調査の権利は後関利明教授および視能訓練士・高橋慎也が保有しています。無断転載・複製を禁じます。")
